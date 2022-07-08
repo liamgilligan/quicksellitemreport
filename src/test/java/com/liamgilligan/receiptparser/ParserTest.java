@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ParserTest {
 
+    /*
     record regexResult(String regex, String result){}
     @ParameterizedTest
     @MethodSource("recordProvider")
@@ -27,5 +28,7 @@ class ParserTest {
         return Stream.of(
                 new regexResult("MS Snapback black/white          25.95                                          ", "MS Snapback black/white")
         );
-    }
+      }
+     */
+
 }
