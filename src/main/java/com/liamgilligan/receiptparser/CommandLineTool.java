@@ -1,11 +1,14 @@
 package com.liamgilligan.receiptparser;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
 public class CommandLineTool {
     public static void main(String[] args) throws Exception {
+        File file = new File("/home/liamgilligan/Desktop");
+        System.out.println(file.getAbsolutePath());
         /*
         String fileName = args[0];
         Parser parser = new Parser();

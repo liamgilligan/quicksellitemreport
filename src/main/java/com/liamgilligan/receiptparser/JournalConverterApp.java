@@ -5,40 +5,54 @@ import javafx.application.Platform;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 public class JournalConverterApp extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         primaryStage.show();
-        List<File> fileList = choose(primaryStage);
+
+        List<File> fileList = chooseJournalFiles(primaryStage);
+
+        File outputFile = createOutputFile(primaryStage);
+        String outputFilePath = outputFile.getAbsolutePath();
+
         Parser parser = new Parser();
         List<Item> finalList = parser.parseFile(fileList);
-        try (
-                FileWriter fos = new FileWriter("itemquantity.csv");
-                PrintWriter dos = new PrintWriter(fos)
-        ){
-        for (Item i : finalList) {
-            dos.print(i.itemDescription()+"\t");
-            dos.print(i.price()+"\t");
-            dos.print(i.quantity()+"\t");
-            dos.println();
+
+        BufferedWriter bw = new BufferedWriter(new FileWriter(outputFilePath));
+        for (Item i:finalList) {
+            String lineToAppend = (i.itemDescription() + "\t" + i.price() + "\t" + i.quantity());
+            bw.write(lineToAppend);
+            bw.newLine();
         }
-    }
+        bw.flush();
+        bw.close();
+
         Platform.exit();
     }
     public static void main(String[] args) {
         launch(args);
     }
-    public List<File> choose(Stage ownerWindow) {
+    public List<File> chooseJournalFiles(Stage ownerWindow) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Select Journal Files");
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Journal Files", "*.JOU"));
         return fileChooser.showOpenMultipleDialog(ownerWindow);
     }
-
+    public File createOutputFile(Stage ownerWindow) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choose Output Location");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Tab Seperated Values", "*.tsv"));
+        return fileChooser.showSaveDialog(ownerWindow);
+    }
 }
