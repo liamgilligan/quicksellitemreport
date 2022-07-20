@@ -8,10 +8,6 @@ import javafx.stage.Stage;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 public class JournalConverterApp extends Application {
@@ -45,14 +41,14 @@ public class JournalConverterApp extends Application {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Select Journal Files");
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Journal Files", "*.JOU"));
+                new FileChooser.ExtensionFilter("Journal Files (*.JOU)", "*.JOU"));
         return fileChooser.showOpenMultipleDialog(ownerWindow);
     }
     public File createOutputFile(Stage ownerWindow) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Choose Output Location");
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Tab Seperated Values", "*.tsv"));
+                new FileChooser.ExtensionFilter("Tab Seperated Values (*.tsv)", "*.tsv"));
         return fileChooser.showSaveDialog(ownerWindow);
     }
 }

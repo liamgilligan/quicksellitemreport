@@ -6,116 +6,120 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Parser {
 
-    private boolean inBody;
-
-    /*
-    DEFINING REGEX PATTERNS FOR FUTURE METHODS
-     */
+    //RegEx patterns
     static final Pattern decimalPattern  = Pattern.compile("\\d+\\.\\d{2}");
     static final Pattern refundPattern  = Pattern.compile("-\\d+\\.\\d{2}");
     static final Pattern itemDescriptionPattern  = Pattern.compile("^\\S+(\\s{1,2}\\S+)*");
-    static final Pattern websiteLinkPattern = Pattern.compile("www.MysterySpot.com");
+    static final Pattern startBodyPattern = Pattern.compile("www.MysterySpot.com");
     static final Pattern endBodyPattern = Pattern.compile("((--------)|(Cash Pay Out))");
-    static final Pattern quantityPattern = Pattern.compile("\\s\\d+\\s");
+    static final Pattern quantityPattern = Pattern.compile("\\s-?\\d+\\s");
 
-    private Optional<String> findDecimal(String currentLine) {
+
+    //Methods for returning whether a pattern appears.
+    private boolean containsDecimal(String currentLine){
         Matcher matcher = decimalPattern.matcher(currentLine);
-        if (matcher.find()) {
-            return Optional.of(matcher.group());
-        } else {
-            return Optional.empty();
-        }
+        return matcher.find();
     }
-    private Optional<String> findRefund(String currentLine) {
+
+    private boolean containsRefund(String currentLine){
         Matcher matcher = refundPattern.matcher(currentLine);
-        if (matcher.find()) {
-            return Optional.of(matcher.group());
-        } else {
-            return Optional.empty();
-        }
+        return matcher.find();
     }
-    private Optional<String> findQuantity(String currentLine) {
-        Matcher matcher = quantityPattern.matcher(currentLine);
-        if (matcher.find()) {
-            return Optional.of(matcher.group());
-        } else {
-            return Optional.empty();
-        }
-    }
-     Optional<String> findItemDescription(String currentLine) {
+
+    private boolean containsItemDescription(String currentLine){
         Matcher matcher = itemDescriptionPattern.matcher(currentLine);
-        if (matcher.find()) {
-            return Optional.of(matcher.group());
-        } else {
-            return Optional.empty();
-        }
+        return matcher.find();
     }
-    private Optional<String> findWebsiteLink(String currentLine) {
-        Matcher matcher = websiteLinkPattern.matcher(currentLine);
-        if (matcher.find()) {
-            return Optional.of(matcher.group());
-        } else {
-            return Optional.empty();
-        }
+
+    private boolean containsStartBody(String currentLine){
+        Matcher matcher = startBodyPattern.matcher(currentLine);
+        return matcher.find();
     }
-    private Optional<String> findEndBody(String currentLine) {
+
+    private boolean containsEndBody(String currentLine){
         Matcher matcher = endBodyPattern.matcher(currentLine);
-        if (matcher.find()) {
-            return Optional.of(matcher.group());
-        } else {
-            return Optional.empty();
-        }
+        return matcher.find();
     }
+
+    //Methods for returning a string that matches the pattern
+    private String getDecimal(String currentLine){
+        Matcher matcher = decimalPattern.matcher(currentLine);
+        matcher.find();
+        return matcher.group();
+    }
+
+    private String getItemDescription(String currentLine){
+        Matcher matcher = itemDescriptionPattern.matcher(currentLine);
+        matcher.find();
+        return matcher.group();
+    }
+
+    private String getQuantity(String currentLine) {
+        Matcher matcher = quantityPattern.matcher(currentLine);
+        matcher.find();
+        return matcher.group();
+    }
+
+    //Methods for determining if given string is a Single Transaction, Multi-transaction, refund, etc
+    private boolean isSingleTransaction(String currentLine) {
+        return containsDecimal(currentLine) && containsItemDescription(currentLine);
+    }
+
+    private boolean isMultiTransaction(String currentLine, String previousLine) {
+        return containsDecimal(currentLine) && containsItemDescription(previousLine) && !containsRefund(currentLine);
+    }
+
+    private boolean isRefund(String currentLine, String previousLine) {
+        return containsRefund(currentLine) && containsItemDescription(previousLine);
+    }
+
+    //Methods for creating Item objects based on the case
+
+    private void createSingleTransactionItem(String currentLine, List<Item> finalList) {
+        Item item = new Item(getItemDescription(currentLine), getDecimal(currentLine), "1");
+        finalList.add(item);
+    }
+
+    private void createMultiTransactionItem(String currentLine, String previousLine, List<Item> finalList) {
+        Item item = new Item(getItemDescription(previousLine), getDecimal(currentLine), getQuantity(currentLine).trim());
+        finalList.add(item);
+    }
+
+    private void createRefundItem(String currentLine, String previousLine, List<Item> finalList) {
+        Item item = new Item(getItemDescription(previousLine), getDecimal(currentLine), getQuantity(currentLine).trim());
+        finalList.add(item);
+    }
+
 
     public List<Item> parseFile(List<File> fileList) throws IOException {
-        inBody = false;
+        boolean inBody = false;
         List<Item> finalList = new ArrayList<>();
-        String previous = null;
+        String previousLine = null;
         for (File currentFile : fileList){
             List<String> receiptList = Files.readAllLines(Paths.get(String.valueOf(currentFile)));
-            for (String current : receiptList) {
+            for (String currentLine : receiptList) {
                 if (inBody) {
-                    if (findDecimal(current).isPresent()) {
-                        if (findItemDescription(current).isPresent()){
-                            if (findRefund(current).isPresent()){
-                                finalList.add(new Item(findItemDescription(current).get().trim().replace("\t", " "), findDecimal(current).get(), "-1"));
-                            }else{
-                                finalList.add(new Item(findItemDescription(current).get().trim().replace("\t", " "), findDecimal(current).get(), "1"));
-                            }
-                        } else if (findRefund(current).isPresent()) {
-                            finalList.add(new Item(findItemDescription(previous).get().trim().replace("\t", " "), "-" + findDecimal(current).get(), findQuantity(current).get().trim()));
-                        } else {
-                            finalList.add(new Item(findItemDescription(previous).get().trim().replace("\t", " "), findDecimal(current).get(), findQuantity(current).get().trim()));
-                        }
-                    } else if (findEndBody(current).isPresent()) {
+                    if (isSingleTransaction(currentLine)){
+                        createSingleTransactionItem(currentLine, finalList);
+                    } else if (isMultiTransaction(currentLine, previousLine)) {
+                        createMultiTransactionItem(currentLine, previousLine, finalList);
+                    } else if (isRefund(currentLine, previousLine)) {
+                        createRefundItem(currentLine, previousLine, finalList);
+                    } else if (containsEndBody(currentLine)){
                         inBody = false;
                     }
-                } else if (findWebsiteLink(current).isPresent()) {
+                } else if (containsStartBody(currentLine)) {
                     inBody = true;
                 }
-                previous = current;
+                previousLine = currentLine;
             }
-
         }
-
         return finalList;
-        /*
-        if (findDecimal(current).isPresent()) {
-                        if (findItemDescription(current).isPresent()){
-                            finalList.add(new Item(findItemDescription(current).get().trim(), findDecimal(current).get(), "1"));
-                        } else {
-                            finalList.add(new Item(findItemDescription(previous).get().trim(), findDecimal(current).get(), findQuantity(current).get().trim()));
-                        }
-                    } else if (findEndBody(current).isPresent()) {
-                        inBody = false;
-                    }
-         */
     }
-
 }
+
