@@ -17,6 +17,10 @@
  */
 package com.liamgilligan.receiptparser;
 
-public class CommandLineTool {
-    public static void main(String[] args) {}
-    }
+import java.util.List;
+
+public record ParserReturn(List<Item> itemList, List<ErrorMessage> errorList) {
+
+    record Item(String itemDescription, String price, String quantity) {}
+    record ErrorMessage(String previousLine, String currentLine, Throwable error) {}
+}
